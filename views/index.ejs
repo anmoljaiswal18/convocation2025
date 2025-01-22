@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convocation Ceremony 2025</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="slider">
+        <div class="slide active" style="background-image: url('image/UNI_9388.JPG')"></div>
+        <div class="slide" style="background-image: url('image/UUM_9378.JPG')"></div>
+        <div class="slide" style="background-image: url('image/UUM_9385.JPG')"></div>
+    </div>
+    <center>
+
+    
+    <div class="page-container">
+        <!-- Welcome Section -->
+        <div class="welcome-section">
+            <div class="welcome-content">
+                <h1>Welcome to UNITED UNIVERSITY</h1>
+                <p class="welcome-text">
+                    2<SUP>nd</SUP> CONVOCATION CEREMONY 2025 <br>
+                    Fill the Registration Form <br>
+
+                    STEP 1: Select Course <br>
+                    STEP 2: Select Your Name <br>
+                    STEP 3: Click on Registration Button <br>
+                </p>
+                
+                <div class="details-section">
+                    <h3>For More Details</h3>
+                    <a href="https://uniteduniversity.edu.in/" class="click-here-btn">Click Here...</a>
+                </div>
+
+                <div class="contact-info">
+                    <h3>For any support queries please contact us at:</h3>
+                    <p>
+                        <a href="tel:1800-121-8797">📞 1800-121-8797</a><br>
+                        <a href="mailto:contact@uniteduniversity.edu.in">📧 contact@uniteduniversity.edu.in</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Registration Form Section -->
+        <div class="registration-section">
+            <div class="registration-container">
+                <h2>Course Registration</h2>
+                <form id="registrationForm" action="/register" method="post">
+                    <div class="form-group">
+                        <label for="courseInput">Course:</label>
+                        <input type="text" id="courseInput" class="input-field" placeholder="Type to search course" autocomplete="off">
+                        <div id="courseSuggestions" class="suggestions"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="studentInput">Student Name:</label>
+                        <input type="text" id="studentInput" class="input-field" placeholder="Type to search student name" autocomplete="off" disabled>
+                        <div id="studentSuggestions" class="suggestions"></div>
+                    </div>
+                    <button type="submit" onclick="alert('You are successfully registered!')">Register</button>
+                </form>
+                <p id="successMessage" class="success-message">Registration successful!</p>
+            </div>
+        </div>
+    </div>
+</center>
+
+    <script>
+        // Banner Script//
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function nextSlide() {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (currentSlide + 1) % slides.length;
+            slides[currentSlide].classList.add('active');
+        }
+
+        setInterval(nextSlide, 5000);
+
+        // Student data organized by course
+        let selectedCourse = '';
+        let selectedStudent = '';
+        
+        const courseInput = document.getElementById('courseInput');
+        const studentInput = document.getElementById('studentInput');
+        const courseSuggestions = document.getElementById('courseSuggestions');
+        const studentSuggestions = document.getElementById('studentSuggestions');
+        const registrationForm = document.getElementById('registrationForm');
+        const message = document.getElementById('message');
+
+        // Course input handler
+        courseInput.addEventListener('input', async () => {
+            const search = courseInput.value;
+            if (search.length < 1) {
+                courseSuggestions.style.display = 'none';
+                return;
+            }
+
+            const response = await fetch(`/api/courses?search=${search}`);
+            const courses = await response.json();
+
+            courseSuggestions.innerHTML = '';
+            courses.forEach(course => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.textContent = course;
+                div.onclick = () => {
+                    courseInput.value = course;
+                    selectedCourse = course;
+                    courseSuggestions.style.display = 'none';
+                    studentInput.disabled = false;
+                    studentInput.value = '';
+                };
+                courseSuggestions.appendChild(div);
+            });
+            courseSuggestions.style.display = courses.length ? 'block' : 'none';
+        });
+
+        // Student input handler
+        studentInput.addEventListener('input', async () => {
+            const search = studentInput.value;
+            if (search.length < 1 || !selectedCourse) {
+                studentSuggestions.style.display = 'none';
+                return;
+            }
+
+            const response = await fetch(`/api/students?course=${selectedCourse}&search=${search}`);
+            const students = await response.json();
+
+            studentSuggestions.innerHTML = '';
+            students.forEach(student => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.textContent = student;
+                div.onclick = () => {
+                    studentInput.value = student;
+                    selectedStudent = student;
+                    studentSuggestions.style.display = 'none';
+                };
+                studentSuggestions.appendChild(div);
+            });
+            studentSuggestions.style.display = students.length ? 'block' : 'none';
+        });
+
+        // Form submission
+        registrationForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!selectedCourse || !selectedStudent) {
+                showMessage('Please select both course and student name', false);
+                return;
+            }
+
+            try {
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        course: selectedCourse,
+                        name: selectedStudent
+                    })
+                });
+
+                const result = await response.json();
+                showMessage(result.message, result.success);
+
+                if (result.success) {
+                    // Reset form
+                    courseInput.value = '';
+                    studentInput.value = '';
+                    studentInput.disabled = true;
+                    selectedCourse = '';
+                    selectedStudent = '';
+                }
+            } catch (error) {
+                showMessage('Registration failed. Please try again.', false);
+            }
+        });
+
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!courseSuggestions.contains(e.target) && e.target !== courseInput) {
+                courseSuggestions.style.display = 'none';
+            }
+            if (!studentSuggestions.contains(e.target) && e.target !== studentInput) {
+                studentSuggestions.style.display = 'none';
+            }
+        });
+
+        function showMessage(text, isSuccess) {
+            message.textContent = text;
+            message.className = `message ${isSuccess ? 'success' : 'error'}`;
+            message.style.display = 'block';
+            setTimeout(() => {
+                message.style.display = 'none';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

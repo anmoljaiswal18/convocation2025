@@ -1,0 +1,225 @@
+<!-- views/index.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convocation Registration 2025</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-container {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .input-field {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+        .suggestion-item {
+            padding: 10px;
+            cursor: pointer;
+        }
+        .suggestion-item:hover {
+            background: #f0f0f0;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .message {
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background: #dff0d8;
+            color: #3c763d;
+            border: 1px solid #d6e9c6;
+        }
+        .error {
+            background: #f2dede;
+            color: #a94442;
+            border: 1px solid #ebccd1;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>Convocation Registration 2025</h1>
+        <form id="registrationForm">
+            <div class="form-group">
+                <label for="courseInput">Course:</label>
+                <input type="text" id="courseInput" class="input-field" placeholder="Type to search course" autocomplete="off">
+                <div id="courseSuggestions" class="suggestions"></div>
+            </div>
+            <div class="form-group">
+                <label for="studentInput">Student Name:</label>
+                <input type="text" id="studentInput" class="input-field" placeholder="Type to search student name" autocomplete="off" disabled>
+                <div id="studentSuggestions" class="suggestions"></div>
+            </div>
+            <button type="submit">Register</button>
+        </form>
+        <div id="message" class="message"></div>
+    </div>
+
+    <script>
+        let selectedCourse = '';
+        let selectedStudent = '';
+        
+        const courseInput = document.getElementById('courseInput');
+        const studentInput = document.getElementById('studentInput');
+        const courseSuggestions = document.getElementById('courseSuggestions');
+        const studentSuggestions = document.getElementById('studentSuggestions');
+        const registrationForm = document.getElementById('registrationForm');
+        const message = document.getElementById('message');
+
+        // Course input handler
+        courseInput.addEventListener('input', async () => {
+            const search = courseInput.value;
+            if (search.length < 1) {
+                courseSuggestions.style.display = 'none';
+                return;
+            }
+
+            const response = await fetch(`/api/courses?search=${search}`);
+            const courses = await response.json();
+
+            courseSuggestions.innerHTML = '';
+            courses.forEach(course => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.textContent = course;
+                div.onclick = () => {
+                    courseInput.value = course;
+                    selectedCourse = course;
+                    courseSuggestions.style.display = 'none';
+                    studentInput.disabled = false;
+                    studentInput.value = '';
+                };
+                courseSuggestions.appendChild(div);
+            });
+            courseSuggestions.style.display = courses.length ? 'block' : 'none';
+        });
+
+        // Student input handler
+        studentInput.addEventListener('input', async () => {
+            const search = studentInput.value;
+            if (search.length < 1 || !selectedCourse) {
+                studentSuggestions.style.display = 'none';
+                return;
+            }
+
+            const response = await fetch(`/api/students?course=${selectedCourse}&search=${search}`);
+            const students = await response.json();
+
+            studentSuggestions.innerHTML = '';
+            students.forEach(student => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.textContent = student;
+                div.onclick = () => {
+                    studentInput.value = student;
+                    selectedStudent = student;
+                    studentSuggestions.style.display = 'none';
+                };
+                studentSuggestions.appendChild(div);
+            });
+            studentSuggestions.style.display = students.length ? 'block' : 'none';
+        });
+
+        // Form submission
+        registrationForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!selectedCourse || !selectedStudent) {
+                showMessage('Please select both course and student name', false);
+                return;
+            }
+
+            try {
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        course: selectedCourse,
+                        name: selectedStudent
+                    })
+                });
+
+                const result = await response.json();
+                showMessage(result.message, result.success);
+
+                if (result.success) {
+                    // Reset form
+                    courseInput.value = '';
+                    studentInput.value = '';
+                    studentInput.disabled = true;
+                    selectedCourse = '';
+                    selectedStudent = '';
+                }
+            } catch (error) {
+                showMessage('Registration failed. Please try again.', false);
+            }
+        });
+
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!courseSuggestions.contains(e.target) && e.target !== courseInput) {
+                courseSuggestions.style.display = 'none';
+            }
+            if (!studentSuggestions.contains(e.target) && e.target !== studentInput) {
+                studentSuggestions.style.display = 'none';
+            }
+        });
+
+        function showMessage(text, isSuccess) {
+            message.textContent = text;
+            message.className = `message ${isSuccess ? 'success' : 'error'}`;
+            message.style.display = 'block';
+            setTimeout(() => {
+                message.style.display = 'none';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
